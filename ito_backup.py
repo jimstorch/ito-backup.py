@@ -17,6 +17,7 @@ import re
 import shutil
 import smtplib
 import subprocess
+import sys
 from email.mime.text import MIMEText
 from time import strftime
 
@@ -34,12 +35,38 @@ class RsyncError(Exception):
 
 def _timestamp():
     """Return the current date and time in a log friendly format."""
-    return datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+    return datetime.datetime.now().strftime("%Y-%m-%d-%H%M.%S")
 
 
 def _mb(value):
     """Convert integer value to human readable megabytes."""
     return '%sMB' % locale.format_string('%d', value / 1048576, True)
+
+def _email_log(config, logfile_name, happy):
+    #
+    #   Email Report
+    #
+    smtp_enable = config.get('General', 'smtp_enable')
+    smtp_server = config.get('General', 'smtp_server')
+    smtp_email = config.get('General', 'smtp_email')
+    smtp_password = config.get('General', 'smtp_password')
+    smtp_recipients = config.get('General', 'smtp_recipients')
+
+    if smtp_enable.lower() == 'true':
+
+        with open(logfile_name, 'rt') as fp:
+            msg = fp.read()
+        mime = MIMEText(msg)
+        mime['From'] = smtp_email
+        if happy:
+            mime['Subject'] = "Backup complete on %s" % thismachine
+        else:
+            mime['Subject'] = "BACKUP FAILED ON %s" % thismachine
+        mime['To'] = smtp_recipients
+        server = smtplib.SMTP(smtp_server)
+        server.login(smtp_email, smtp_password)
+        server.sendmail(mime['From'], mime['To'].split(','), mime.as_string())
+        server.quit()
 
 
 if __name__ == '__main__':
@@ -67,6 +94,17 @@ if __name__ == '__main__':
     #  Batch Backup
     #
     backup_folder = config.get('General', 'backup_folder')
+
+    #
+    #   Test if the backup volume is not mounted, exit if not
+    #
+    if config.get('General', 'mount_check').lower() == 'true':
+        if not os.path.ismount(backup_folder):
+            _log('backup point %s not mounted' % backup_folder)
+            logfp.close()
+            _email_log(config, logfile_name, False)
+            sys.exit(1)
+
     total = 0
     happy = True
 
@@ -81,7 +119,7 @@ if __name__ == '__main__':
         rsync_server = '%s@%s::' % (username, host.strip())
 
         #
-        #   Ask the RSYNC/Delta Copy Server what virtual directories it serves.  
+        #   Ask the RSYNC/Delta Copy Server what virtual directories it serves.
         #
         _log('requesting rsync aliases from %s' % host)
         try:
@@ -184,27 +222,7 @@ if __name__ == '__main__':
          (thismachine, _mb(total)))
     logfp.close()
 
-    #
-    #   Email Report
-    #
-    smtp_enable = config.get('General', 'smtp_enable')
-    smtp_server = config.get('General', 'smtp_server')
-    smtp_email = config.get('General', 'smtp_email')
-    smtp_password = config.get('General', 'smtp_password')
-    smtp_recipients = config.get('General', 'smtp_recipients')
+    _email_log(config, logfile_name, happy)
 
-    if smtp_enable == 'true':
 
-        with open(logfile_name, 'rt') as fp:
-            msg = fp.read()
-        mime = MIMEText(msg)
-        mime['From'] = smtp_email
-        if happy:
-            mime['Subject'] = "Backup complete on %s" % thismachine
-        else:
-            mime['Subject'] = "BACKUP FAILED ON %s" % thismachine
-        mime['To'] = smtp_recipients
-        server = smtplib.SMTP(smtp_server)
-        server.login(smtp_email, smtp_password)
-        server.sendmail(mime['From'], mime['To'].split(','), mime.as_string())
-        server.quit()
+

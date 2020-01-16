@@ -1,0 +1,21 @@
+[General]
+log_folder=logs/
+backup_folder=/backup
+smtp_enable=true
+smtp_server=mail.example.org:25
+smtp_email=noreply@example.org
+smtp_password=noreply's-really-good-password
+smtp_recipients = reports@example.org
+
+
+[JobOrServerName1]
+host=192.168.1.10
+rotate_level=14
+username=job1_user_name
+password=a_really_good_password
+
+[JobOrServerName2]
+host=192.168.1.11
+rotate_level=5
+username=job2_user_name
+password=another_good_password

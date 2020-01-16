@@ -133,6 +133,7 @@ if __name__ == '__main__':
             else:
                 folders = stdout.split()
         except Exception as err:
+            happy = False
             err_msg = str(err)
             _log('directory listing error: %s' % err_msg)
             continue
@@ -212,8 +213,10 @@ if __name__ == '__main__':
                     _log('.. copied %s' % _mb(size))
 
             except Exception as err:
+                happy = False
                 err_msg = str(err)
                 _log('!! error: %s' % err_msg)
+
 
         _log('job "%s" complete with %s backed up' % (job, _mb(subtotal)))
         total += subtotal

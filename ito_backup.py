@@ -39,8 +39,8 @@ def _timestamp():
 
 
 def _mb(value):
-    """Convert integer value to human readable megabytes."""
-    return '%sMB' % locale.format_string('%d', value / 1048576, True)
+    """Convert value to human readable megabytes."""
+    return '%sMB' % locale.format_string('%.2f', value / 1048576.0, True)
 
 def _email_log(config, logfile_name, happy):
     #
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     #
     if config.get('General', 'mount_check').lower() == 'true':
         if not os.path.ismount(backup_folder):
-            _log('backup point %s not mounted' % backup_folder)
+            _log('!! backup point %s not mounted' % backup_folder)
             logfp.close()
             _email_log(config, logfile_name, False)
             sys.exit(1)
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         #
         #   Ask the RSYNC/Delta Copy Server what virtual directories it serves.
         #
-        _log('requesting rsync aliases from %s' % host)
+        _log('.. requesting rsync targets from %s' % host)
         try:
             cmd = ['rsync', rsync_server]
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env={
@@ -135,7 +135,7 @@ if __name__ == '__main__':
         except Exception as err:
             happy = False
             err_msg = str(err)
-            _log('directory listing error: %s' % err_msg)
+            _log('!! directory listing error: %s' % err_msg)
             continue
 
         subtotal = 0
@@ -145,7 +145,7 @@ if __name__ == '__main__':
             print(folder)
             target_path = os.path.join(backup_folder, job)
             source = rsync_server + os.path.join(folder) + '/'
-            _log(".. syncing %s/ to %s/" % (folder, target_path))
+            _log('.. syncing "%s" to %s' % (folder, target_path))
 
             try:
 
@@ -210,7 +210,7 @@ if __name__ == '__main__':
                     match_obj = SIZE_RE.search(stdout.decode('utf-8'))
                     size = int(match_obj.group(1))
                     subtotal += size
-                    _log('.. copied %s' % _mb(size))
+                    _log('.. synchronized %s' % _mb(size))
 
             except Exception as err:
                 happy = False
@@ -218,7 +218,7 @@ if __name__ == '__main__':
                 _log('!! error: %s' % err_msg)
 
 
-        _log('job "%s" complete with %s backed up' % (job, _mb(subtotal)))
+        _log('.. job "%s" complete with %s processed' % (job, _mb(subtotal)))
         total += subtotal
 
     _log('batch backup finished on device "%s", total size was %s' %

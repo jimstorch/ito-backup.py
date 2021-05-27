@@ -30,7 +30,7 @@ class RsyncError(Exception):
 def _mb(value):
     """Convert value to human readable megabytes."""
     locale.setlocale(locale.LC_ALL, 'en_US.utf8')
-    return f"{locale.format_string(' % .2f', value / 1048576.0, True)}MB"
+    return f"{locale.format_string('%.2f', value / 1048576.0, True)}MB"
 
 
 def _email_log(config, logfile_name, happy):
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     #
     if config.get('General', 'mount_check').lower() == 'true':
         if not os.path.ismount(backup_folder):
-            log.error(f'!! backup point {backup_folder} not mounted')
+            log.error(f'backup point {backup_folder} not mounted')
             _email_log(config, logfile_name, False)
             sys.exit(1)
 
@@ -115,17 +115,18 @@ if __name__ == '__main__':
     for job in config.sections():
         if job == 'General':
             continue
-        log.info(f'*** Job "{job}" begun ***')
+
         host = config.get(job, 'host')
         username = config.get(job, 'username')
         password = config.get(job, 'password')
         rotate_level = int(config.get(job, 'rotate_level'))
+        log.info(f'--> job "{job}" begun, rotate level is {rotate_level}')
         rsync_server = f'{username}@{host.strip()}::'
 
         #
         #   Ask the RSYNC/Delta Copy Server what virtual directories it serves.
         #
-        log.info('Requesting rsync targets from %s' % host)
+        log.info(f'requesting rsync targets from {host} ...')
         try:
             cmd = ['rsync', rsync_server]
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
@@ -140,7 +141,7 @@ if __name__ == '__main__':
         except Exception as err:
             happy = False
             err_msg = str(err)
-            log.error(f'Directory listing error: {err_msg}')
+            log.error(f'directory listing error: {err_msg}')
             continue
 
         subtotal = 0
@@ -149,7 +150,7 @@ if __name__ == '__main__':
             folder = bytecoded_folder.decode('utf-8')
             target_path = os.path.join(backup_folder, job)
             source = rsync_server + os.path.join(folder) + '/'
-            log.info(f'Syncing "{folder}" to {target_path}')
+            log.info(f'syncing "{folder}" to {target_path} ...')
 
             try:
 
@@ -159,7 +160,7 @@ if __name__ == '__main__':
                 #
                 if not os.path.isdir(backup_folder):
                     raise RsyncError(
-                        f'!! backup_folder does not exist: {backup_folder}')
+                        f'backup_folder does not exist: {backup_folder}')
                 if not os.path.isdir(target_path):
                     os.makedirs(target_path)
 
@@ -217,17 +218,17 @@ if __name__ == '__main__':
                     match_obj = SIZE_RE.search(stdout.decode('utf-8'))
                     size = int(match_obj.group(1))
                     subtotal += size
-                    log.info(f'Synchronized {_mb(size)}')
+                    log.info(f'synchronized {_mb(size)}')
 
             except Exception as err:
                 happy = False
                 err_msg = str(err)
-                log.error(f'!! Error: {err_msg}')
+                log.error(f'error: {err_msg}')
 
-        log.info(f'Job {job} complete with {_mb(subtotal)} processed')
+        log.info(f'job {job} complete with {_mb(subtotal)} processed')
         total += subtotal
 
     log.info(
-        f'Batch backup finished on "{thismachine}". '
-        f'Total size was {_mb(total)}')
+        f'batch backup finished on "{thismachine}", '
+        f'total size was {_mb(total)}')
     _email_log(config, logfile_name, happy)

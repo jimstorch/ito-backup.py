@@ -147,7 +147,6 @@ if __name__ == '__main__':
 
         for bytecoded_folder in folders:
             folder = bytecoded_folder.decode('utf-8')
-            print(folder)
             target_path = os.path.join(backup_folder, job)
             source = rsync_server + os.path.join(folder) + '/'
             log.info(f'Syncing "{folder}" to {target_path}')
